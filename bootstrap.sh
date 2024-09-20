@@ -45,7 +45,13 @@ mkdir .kube/
 kind get kubeconfig --name k8s-playground > .kube/config
 ls -la .kube
 kubectl get nodes
+sleep 2 # Wait start cluster.
 echo "==> End create cluster."
+
+# Deploy ingress NGinx
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+# sleep 40 # Wait 40s to start ingress.
+echo "==> End Deploy ingress NGinx."
 
 # Install Helm.
 curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
@@ -68,3 +74,23 @@ echo "*************************."
 helm repo add ${kube_dash_name} https://kubernetes.github.io/dashboard/
 helm upgrade --install ${kube_dash_name} ${kube_dash_name}/${kube_dash_name} --namespace ${kube_dash_name}
 echo "==> End deploy kubernetes dashboard."
+
+# Deploy ingress validation
+# ./wait-running.sh "kubectl get pods -n ingress-nginx" 60 # Wait 60 seconds start ingress-nginx.
+# ./wait-running.sh "kubectl get all -n ingress-nginx" 60 # Wait 60 seconds start ingress-nginx.
+echo "==> Begin Deploy ingress validation."
+echo "==> Waiting 60 seconds."
+sleep 60
+kubectl apply -f https://kind.sigs.k8s.io/examples/ingress/usage.yaml
+echo "==> End Deploy ingress validation."
+
+# Validating ingress NGinx.
+## Test should output "foo-app"
+# ./wait-running.sh "kubectl describe ingress example-ingress" 30
+echo "==> Begin Validating ingress NGinx."
+echo "==> Waiting 30 seconds."
+sleep 30
+curl localhost/foo/hostname; echo
+## should output "bar-app"
+curl localhost/bar/hostname; echo
+echo "==> End Validating ingress NGinx."

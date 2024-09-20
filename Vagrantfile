@@ -16,6 +16,7 @@ Vagrant.configure("2") do |config|
   # Copy files.
   config.vm.provision "file", source: "./kubernetes-dashboard-user.yaml", destination: "$HOME/kubernetes-dashboard-user.yaml"
   config.vm.provision "file", source: "./kubernetes-dashboard-ingress.yaml", destination: "$HOME/kubernetes-dashboard-ingress.yaml"
+  config.vm.provision "file", source: "./wait-running.sh", destination: "$HOME/wait-running.sh"
   
   # Run install tools.
   config.vm.provision :shell, path: "bootstrap.sh"

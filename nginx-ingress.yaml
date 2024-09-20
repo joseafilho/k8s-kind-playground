@@ -8,10 +8,10 @@ metadata:
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
     nginx.ingress.kubernetes.io/auth-type: basic
     nginx.ingress.kubernetes.io/auth-secret: basic-auth
-    nginx.ingress.kubernetes.io/auth-realm: 'Authentication Required - lolpro11'
+    nginx.ingress.kubernetes.io/auth-realm: 'Authentication Required'
 spec:
   rules:
-  - host: lolpro11.me
+  - host: josearaujo.com.br
     http:
       paths:
       - path: /
