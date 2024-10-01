@@ -1,0 +1,12 @@
+https://192.168.1.32:8443/#/login
+
+helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --namespace kubernetes-dashboard
+helm delete kubernetes-dashboard --namespace kubernetes-dashboard
+helm apply -f kubernetes-dashboard --namespace kubernetes-dashboard
+
+
+helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
+helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --namespace kubernetes-dashboard --set ingress.enabled=true --set ingress.paths=/kube-dash(/|$)(.*)
+helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --namespace kubernetes-dashboard --set kong.proxy.type=NodePort --set kong.http.enable=true
+
+./wait-running.sh "kubectl describe ingress example-ingress" 30

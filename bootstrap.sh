@@ -22,75 +22,85 @@ kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
 - role: control-plane
-  kubeadmConfigPatches:
-  - |
-    kind: InitConfiguration
-    nodeRegistration:
-      kubeletExtraArgs:
-        node-labels: "ingress-ready=true"
   extraPortMappings:
-  - containerPort: 80
-    hostPort: 80
+  - containerPort: 31437
+    hostPort: 8080
     protocol: TCP
-  - containerPort: 443
-    hostPort: 443
+  - containerPort: 31438
+    hostPort: 8443
     protocol: TCP
 - role: worker
 - role: worker
 EOF
 
+## Connect kubectl.
 kind create cluster --name k8s-playground --config kind-config.yaml
 kubectl cluster-info --context kind-k8s-playground
 mkdir .kube/
 kind get kubeconfig --name k8s-playground > .kube/config
-ls -la .kube
 kubectl get nodes
 sleep 2 # Wait start cluster.
 echo "==> End create cluster."
 
-# Deploy ingress NGinx
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
-# sleep 40 # Wait 40s to start ingress.
-echo "==> End Deploy ingress NGinx."
+# Install apigateway api nginx.
+kubectl kustomize "https://github.com/nginxinc/nginx-gateway-fabric/config/crd/gateway-api/standard?ref=v1.4.0" | kubectl apply -f -
+kubectl apply -f https://raw.githubusercontent.com/nginxinc/nginx-gateway-fabric/v1.4.0/deploy/crds.yaml
+kubectl apply -f https://raw.githubusercontent.com/nginxinc/nginx-gateway-fabric/v1.4.0/deploy/nodeport/deploy.yaml
+kubectl apply -f gateway.yaml
+kubectl apply -f gateway-svc.yaml
+echo "==> End Install apigateway api nginx."
 
-# Install Helm.
-curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
-chmod +x get_helm.sh
-./get_helm.sh
-helm version
-echo "==> End install helm."
+# Deploy apps https echo.
+kubectl apply -f http-echo.yaml
+sleep 40
+curl localhost:8080/dev-app; echo
+curl localhost:8080/ops-app; echo
+echo "==> End Validating apigateway api nginx."
 
-# Deploy kubernetes dashboard.
-kube_dash_name="kubernetes-dashboard"
-kubectl create namespace ${kube_dash_name}
-kubectl apply -f ${kube_dash_name}-user.yaml -n ${kube_dash_name}
-kubectl -n ${kube_dash_name} create token admin-user
+# # Deploy ingress NGinx
+# kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+# kubectl wait --namespace ingress-nginx \
+#   --for=condition=ready pod \
+#   --selector=app.kubernetes.io/component=controller \
+#   --timeout=90s
+# echo "==> End Deploy ingress NGinx."
 
-echo "*************************."
-echo "==> Get token user kubernetes dashboard."
-echo "*************************."
-kubectl get secret admin-user -n ${kube_dash_name} -o jsonpath={".data.token"} | base64 -d
-echo "*************************."
-helm repo add ${kube_dash_name} https://kubernetes.github.io/dashboard/
-helm upgrade --install ${kube_dash_name} ${kube_dash_name}/${kube_dash_name} --namespace ${kube_dash_name}
-echo "==> End deploy kubernetes dashboard."
+# # Install Helm.
+# curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+# chmod +x get_helm.sh
+# ./get_helm.sh
+# helm version
+# echo "==> End install helm."
 
-# Deploy ingress validation
-# ./wait-running.sh "kubectl get pods -n ingress-nginx" 60 # Wait 60 seconds start ingress-nginx.
-# ./wait-running.sh "kubectl get all -n ingress-nginx" 60 # Wait 60 seconds start ingress-nginx.
-echo "==> Begin Deploy ingress validation."
-echo "==> Waiting 60 seconds."
-sleep 60
-kubectl apply -f https://kind.sigs.k8s.io/examples/ingress/usage.yaml
-echo "==> End Deploy ingress validation."
+# # Deploy kubernetes dashboard.
+# kube_dash_name="kubernetes-dashboard"
+# kubectl create namespace ${kube_dash_name}
+# kubectl apply -f ${kube_dash_name}-user.yaml -n ${kube_dash_name}
+# kubectl -n ${kube_dash_name} create token admin-user; echo
 
-# Validating ingress NGinx.
-## Test should output "foo-app"
-# ./wait-running.sh "kubectl describe ingress example-ingress" 30
-echo "==> Begin Validating ingress NGinx."
-echo "==> Waiting 30 seconds."
-sleep 30
-curl localhost/foo/hostname; echo
-## should output "bar-app"
-curl localhost/bar/hostname; echo
-echo "==> End Validating ingress NGinx."
+# echo "*************************."
+# echo "==> Get token user kubernetes dashboard."
+# echo "*************************."
+# kubectl get secret admin-user -n ${kube_dash_name} -o jsonpath={".data.token"} | base64 -d
+# echo "*************************."
+# helm repo add ${kube_dash_name} https://kubernetes.github.io/dashboard/
+# helm upgrade --install ${kube_dash_name} ${kube_dash_name}/${kube_dash_name} --namespace ${kube_dash_name} # --set ingress.enabled=true --set ingress.path='/kube-dash' # --set kong.proxy.type=NodePort --set kong.http.enable=true
+# kubectl apply -f ${kube_dash_name}-ingress.yaml
+# echo "==> End deploy kubernetes dashboard."
+
+# # Deploy ingress
+# # kubectl apply -f ingress.yaml
+# # echo "==> Waiting ingress 60 seconds."
+# # sleep 90
+
+# # Deploy apps https echo.
+# kubectl apply -f http-echo.yaml
+# sleep 90
+# curl localhost/dev-app; echo
+# curl localhost/ops-app; echo
+# echo "==> End Validating ingress NGinx."
+
+# # Ingress status.
+# kubectl describe ingress -n hello-app
+# kubectl describe ingress -n ${kube_dash_name}
+# echo "==> End ingress status."
