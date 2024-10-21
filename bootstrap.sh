@@ -24,10 +24,10 @@ nodes:
 - role: control-plane
   extraPortMappings:
   - containerPort: 31437
-    hostPort: 8080
+    hostPort: 8081
     protocol: TCP
   - containerPort: 31438
-    hostPort: 8443
+    hostPort: 8444
     protocol: TCP
 - role: worker
 - role: worker
@@ -42,41 +42,32 @@ kubectl get nodes
 sleep 2 # Wait start cluster.
 echo "==> End create cluster."
 
-# Install apigateway api nginx.
+# Install Gateway api nginx.
 kubectl kustomize "https://github.com/nginxinc/nginx-gateway-fabric/config/crd/gateway-api/standard?ref=v1.4.0" | kubectl apply -f -
 kubectl apply -f https://raw.githubusercontent.com/nginxinc/nginx-gateway-fabric/v1.4.0/deploy/crds.yaml
 kubectl apply -f https://raw.githubusercontent.com/nginxinc/nginx-gateway-fabric/v1.4.0/deploy/nodeport/deploy.yaml
 kubectl apply -f gateway.yaml
 kubectl apply -f gateway-svc.yaml
+# kubectl apply -f gateway-route.yaml
 echo "==> End Install apigateway api nginx."
 
 # Deploy apps https echo.
 kubectl apply -f http-echo.yaml
-sleep 40
-curl localhost:8080/dev-app; echo
-curl localhost:8080/ops-app; echo
-echo "==> End Validating apigateway api nginx."
+echo "==> End Deploy apps https echo."
 
-# # Deploy ingress NGinx
-# kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
-# kubectl wait --namespace ingress-nginx \
-#   --for=condition=ready pod \
-#   --selector=app.kubernetes.io/component=controller \
-#   --timeout=90s
-# echo "==> End Deploy ingress NGinx."
+# Install Helm.
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+chmod +x get_helm.sh
+./get_helm.sh
+helm version
+echo "==> End install helm."
 
-# # Install Helm.
-# curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
-# chmod +x get_helm.sh
-# ./get_helm.sh
-# helm version
-# echo "==> End install helm."
-
-# # Deploy kubernetes dashboard.
+# Deploy kubernetes dashboard.
 # kube_dash_name="kubernetes-dashboard"
 # kubectl create namespace ${kube_dash_name}
 # kubectl apply -f ${kube_dash_name}-user.yaml -n ${kube_dash_name}
 # kubectl -n ${kube_dash_name} create token admin-user; echo
+# kubectl apply -f ${kube_dash_name}-gateway-refg.yaml -n ${kube_dash_name}
 
 # echo "*************************."
 # echo "==> Get token user kubernetes dashboard."
@@ -85,8 +76,17 @@ echo "==> End Validating apigateway api nginx."
 # echo "*************************."
 # helm repo add ${kube_dash_name} https://kubernetes.github.io/dashboard/
 # helm upgrade --install ${kube_dash_name} ${kube_dash_name}/${kube_dash_name} --namespace ${kube_dash_name} # --set ingress.enabled=true --set ingress.path='/kube-dash' # --set kong.proxy.type=NodePort --set kong.http.enable=true
-# kubectl apply -f ${kube_dash_name}-ingress.yaml
 # echo "==> End deploy kubernetes dashboard."
+
+# Deploy gateway route.
+kubectl apply -f gateway-route.yaml
+echo "==> End Deploy gateway route."
+
+# Validatind apps https echo.
+curl localhost:8081/dev-app; echo
+curl localhost:8081/ops-app; echo
+curl localhost:8081/ops-app-v2; echo
+echo "==> End Validating apps https echo."
 
 # # Deploy ingress
 # # kubectl apply -f ingress.yaml
